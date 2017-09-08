@@ -108,6 +108,7 @@ module dmac_request_arb #(
   input  [DMA_DATA_WIDTH_SRC-1:0]     m_axi_rdata,
   output                              m_axi_rready,
   input                               m_axi_rvalid,
+  input                               m_axi_rlast,
   input  [ 1:0]                       m_axi_rresp,
 
   // Slave streaming AXI interface
@@ -559,6 +560,7 @@ dmac_src_mm_axi #(
   .m_axi_rready(m_axi_rready),
   .m_axi_rvalid(m_axi_rvalid),
   .m_axi_rdata(m_axi_rdata),
+  .m_axi_rlast(m_axi_rlast),
   .m_axi_rresp(m_axi_rresp)
 );
 
