@@ -3,6 +3,7 @@
 SOURCE="dma_read_tb.v"
 SOURCE+=" axi_read_slave.v axi_slave.v"
 SOURCE+=" ../dmac_transfer.v ../request_arb.v ../request_generator.v ../splitter.v"
+SOURCE+=" ../burst_fifo.v"
 SOURCE+=" ../2d_transfer.v"
 SOURCE+=" ../reset_manager.v ../data_mover.v ../axi_register_slice.v"
 SOURCE+=" ../dest_fifo_inf.v"

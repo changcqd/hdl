@@ -34,7 +34,6 @@
 // ***************************************************************************
 
 module dmac_src_fifo_inf #(
-
   parameter ID_WIDTH = 3,
   parameter DATA_WIDTH = 64,
   parameter BEATS_PER_BURST_WIDTH = 4)(
@@ -58,6 +57,7 @@ module dmac_src_fifo_inf #(
   input fifo_ready,
   output fifo_valid,
   output [DATA_WIDTH-1:0] fifo_data,
+  output fifo_last,
 
   input req_valid,
   output req_ready,
@@ -123,7 +123,7 @@ dmac_data_mover # (
   .m_axi_ready(fifo_ready),
   .m_axi_valid(fifo_valid),
   .m_axi_data(fifo_data),
-  .m_axi_last()
+  .m_axi_last(fifo_last)
 );
 
 endmodule

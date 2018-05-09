@@ -250,12 +250,15 @@ wire [ID_WIDTH-1:0] src_response_id;
 wire src_valid;
 wire src_ready;
 wire [DMA_DATA_WIDTH_SRC-1:0] src_data;
+wire src_last;
 wire src_fifo_valid;
 wire src_fifo_ready;
 wire [DMA_DATA_WIDTH_SRC-1:0] src_fifo_data;
+wire src_fifo_last;
 wire src_fifo_repacked_valid;
 wire src_fifo_repacked_ready;
 wire [DMA_DATA_WIDTH-1:0] src_fifo_repacked_data;
+wire src_fifo_repacked_last;
 
 wire response_dest_valid;
 wire response_dest_ready = 1'b1;
@@ -547,6 +550,7 @@ dmac_src_mm_axi #(
   .fifo_valid(src_valid),
   .fifo_ready(src_ready),
   .fifo_data(src_data),
+  .fifo_last(src_last),
 
   .m_axi_arready(m_axi_arready),
   .m_axi_arvalid(m_axi_arvalid),
@@ -617,6 +621,7 @@ dmac_src_axi_stream #(
   .fifo_valid(src_valid),
   .fifo_ready(src_ready),
   .fifo_data(src_data),
+  .fifo_last(src_last),
 
   .s_axis_valid(s_axis_valid),
   .s_axis_ready(s_axis_ready),
@@ -672,6 +677,7 @@ dmac_src_fifo_inf #(
   .fifo_valid(src_valid),
   .fifo_ready(src_ready),
   .fifo_data(src_data),
+  .fifo_last(src_last),
 
   .en(fifo_wr_en),
   .din(fifo_wr_din),
@@ -718,7 +724,7 @@ sync_bits #(
 );
 
 axi_register_slice #(
-  .DATA_WIDTH(DMA_DATA_WIDTH_SRC),
+  .DATA_WIDTH(DMA_DATA_WIDTH_SRC + 1),
   .FORWARD_REGISTERED(AXI_SLICE_SRC),
   .BACKWARD_REGISTERED(AXI_SLICE_SRC)
 ) i_src_slice (
@@ -726,10 +732,10 @@ axi_register_slice #(
   .resetn(src_resetn),
   .s_axi_valid(src_valid),
   .s_axi_ready(src_ready),
-  .s_axi_data(src_data),
+  .s_axi_data({src_data,src_last}),
   .m_axi_valid(src_fifo_valid),
   .m_axi_ready(src_fifo_ready),
-  .m_axi_data(src_fifo_data)
+  .m_axi_data({src_fifo_data,src_fifo_last})
 );
 
 util_axis_resize #(
@@ -746,25 +752,27 @@ util_axis_resize #(
   .m_data(src_fifo_repacked_data)
 );
 
-util_axis_fifo #(
+assign src_fifo_repacked_last = src_fifo_last;
+
+burst_fifo #(
   .DATA_WIDTH(DMA_DATA_WIDTH),
+  .ID_WIDTH(ID_WIDTH),
   .ADDRESS_WIDTH($clog2(MAX_BYTES_PER_BURST / (DMA_DATA_WIDTH / 8) * FIFO_SIZE)),
   .ASYNC_CLK(ASYNC_CLK_SRC_DEST)
 ) i_fifo (
-  .s_axis_aclk(src_clk),
-  .s_axis_aresetn(src_resetn),
-  .s_axis_valid(src_fifo_repacked_valid),
-  .s_axis_ready(src_fifo_repacked_ready),
-  .s_axis_data(src_fifo_repacked_data),
-  .s_axis_empty(),
-  .s_axis_room(),
+  .src_clk(src_clk),
+  .src_reset(~src_resetn),
+  .src_data_valid(src_fifo_repacked_valid),
+  .src_data_ready(src_fifo_repacked_ready),
+  .src_data(src_fifo_repacked_data),
+  .src_data_last(src_fifo_repacked_last),
 
-  .m_axis_aclk(dest_clk),
-  .m_axis_aresetn(dest_resetn),
-  .m_axis_valid(dest_fifo_valid),
-  .m_axis_ready(dest_fifo_ready),
-  .m_axis_data(dest_fifo_data),
-  .m_axis_level()
+  .dest_clk(dest_clk),
+  .dest_reset(~dest_resetn),
+  .dest_data_valid(dest_fifo_valid),
+  .dest_data_ready(dest_fifo_ready),
+  .dest_data(dest_fifo_data),
+  .dest_data_last()
 );
 
 util_axis_resize #(

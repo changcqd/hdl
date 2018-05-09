@@ -131,14 +131,22 @@ set_max_delay -quiet -datapath_only \
 set_max_delay -quiet -datapath_only \
 	-from $src_clk \
 	-to [get_cells -quiet -hier *cdc_sync_stage1_reg* \
-		-filter {NAME =~ *i_fifo/i_address_gray/i_waddr_sync* && IS_SEQUENTIAL}] \
+		-filter {NAME =~ *i_fifo/i_dest_sync_id* && IS_SEQUENTIAL}] \
 	[get_property -min PERIOD $src_clk]
 
 set_max_delay -quiet -datapath_only \
 	-from $dest_clk \
 	-to [get_cells -quiet -hier *cdc_sync_stage1_reg* \
-		-filter {NAME =~ *i_fifo/i_address_gray/i_raddr_sync* && IS_SEQUENTIAL}] \
+		-filter {NAME =~ *i_fifo/i_src_sync_id* && IS_SEQUENTIAL}] \
 	[get_property -min PERIOD $dest_clk]
+
+set_max_delay -quiet -datapath_only \
+  -from $src_clk \
+  -through [get_cells -quiet -hier RAM* \
+    -filter {NAME =~ *i_fifo/burst_len_mem_reg*}] \
+	-to $dest_clk \
+	[get_property -min PERIOD $dest_clk]
+
 
 <: } :>
 # Reset signals
