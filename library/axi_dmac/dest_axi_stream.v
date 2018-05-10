@@ -60,6 +60,7 @@ module dmac_dest_axi_stream #(
   output fifo_ready,
   input fifo_valid,
   input [S_AXIS_DATA_WIDTH-1:0] fifo_data,
+  input fifo_last,
 
   input req_valid,
   output req_ready,

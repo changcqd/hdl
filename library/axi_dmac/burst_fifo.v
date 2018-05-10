@@ -53,7 +53,11 @@ module burst_fifo #(
   output reg dest_data_valid = 1'b0,
   input dest_data_ready,
   output reg [DATA_WIDTH-1:0] dest_data = 'h00,
-  output reg dest_data_last = 1'b0
+  output reg dest_data_last = 1'b0,
+
+  output [ID_WIDTH-1:0] dest_request_id,
+  input [ID_WIDTH-1:0] dest_data_request_id,
+  output [ID_WIDTH-1:0] dest_data_response_id
 );
 
 localparam BURST_LEN_WIDTH = ADDRESS_WIDTH - ID_WIDTH + 1;
@@ -152,7 +156,7 @@ assign dest_raddr = {dest_reduced_id,dest_beat_counter};
 
 always @(posedge dest_clk) begin
   /* Valid if there is at least one full burst in the fifo */
-  dest_valid <= dest_src_id != dest_id_next;
+  dest_valid <= dest_data_request_id != dest_id_next;
 end
 
 always @(posedge dest_clk) begin
@@ -229,5 +233,8 @@ sync_bits #(
   .out_resetn(1'b1),
   .out(src_dest_id)
 );
+
+assign dest_request_id = dest_src_id;
+assign dest_data_response_id = dest_id;
 
 endmodule
