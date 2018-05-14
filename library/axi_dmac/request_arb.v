@@ -249,19 +249,17 @@ wire src_response_empty;
 wire [1:0] src_response_resp;
 */
 
-wire [ID_WIDTH-1:0] src_request_id;
+reg [ID_WIDTH-1:0] src_request_id;
+wire [ID_WIDTH-1:0] src_data_request_id;
 wire [ID_WIDTH-1:0] src_response_id;
 
 wire src_valid;
-wire src_ready;
 wire [DMA_DATA_WIDTH_SRC-1:0] src_data;
 wire src_last;
 wire src_fifo_valid;
-wire src_fifo_ready;
 wire [DMA_DATA_WIDTH_SRC-1:0] src_fifo_data;
 wire src_fifo_last;
 wire src_fifo_repacked_valid;
-wire src_fifo_repacked_ready;
 wire [DMA_DATA_WIDTH-1:0] src_fifo_repacked_data;
 wire src_fifo_repacked_last;
 
@@ -556,7 +554,6 @@ dmac_src_mm_axi #(
   .data_eot(src_data_eot),
 
   .fifo_valid(src_valid),
-  .fifo_ready(src_ready),
   .fifo_data(src_data),
   .fifo_last(src_last),
 
@@ -627,7 +624,6 @@ dmac_src_axi_stream #(
   .eot(src_eot),
 
   .fifo_valid(src_valid),
-  .fifo_ready(src_ready),
   .fifo_data(src_data),
   .fifo_last(src_last),
 
@@ -683,7 +679,6 @@ dmac_src_fifo_inf #(
   .eot(src_eot),
 
   .fifo_valid(src_valid),
-  .fifo_ready(src_ready),
   .fifo_data(src_data),
   .fifo_last(src_last),
 
@@ -701,6 +696,8 @@ assign fifo_wr_xfer_req = 1'b0;
 
 end endgenerate
 
+wire [ID_WIDTH-1:0] _src_request_id;
+
 sync_bits #(
   .NUM_OF_BITS(ID_WIDTH),
   .ASYNC_CLK(ASYNC_CLK_REQ_SRC)
@@ -708,8 +705,21 @@ sync_bits #(
   .out_clk(src_clk),
   .out_resetn(1'b1),
   .in(request_id),
-  .out(src_request_id)
+  .out(_src_request_id)
 );
+
+`include "inc_id.h"
+
+always @(posedge src_clk) begin
+  if (src_resetn == 1'b0) begin
+    src_request_id <= 'h00;
+  end else if (src_request_id != _src_request_id &&
+              (src_request_id[ID_WIDTH-1] == src_data_request_id[ID_WIDTH-1] ||
+                src_request_id[ID_WIDTH-2] == src_data_request_id[ID_WIDTH-2] ||
+                src_request_id[ID_WIDTH-3:0] != src_data_request_id[ID_WIDTH-3:0])) begin
+    src_request_id <= inc_id(src_request_id);
+  end
+end
 
 sync_bits #(
   .NUM_OF_BITS(ID_WIDTH),
@@ -724,15 +734,15 @@ sync_bits #(
 axi_register_slice #(
   .DATA_WIDTH(DMA_DATA_WIDTH_SRC + 1),
   .FORWARD_REGISTERED(AXI_SLICE_SRC),
-  .BACKWARD_REGISTERED(AXI_SLICE_SRC)
+  .BACKWARD_REGISTERED(0)
 ) i_src_slice (
   .clk(src_clk),
   .resetn(src_resetn),
   .s_axi_valid(src_valid),
-  .s_axi_ready(src_ready),
+  .s_axi_ready(),
   .s_axi_data({src_data,src_last}),
   .m_axi_valid(src_fifo_valid),
-  .m_axi_ready(src_fifo_ready),
+  .m_axi_ready(1'b1), /* No backpressure */
   .m_axi_data({src_fifo_data,src_fifo_last})
 );
 
@@ -743,14 +753,14 @@ util_axis_resize #(
   .clk(src_clk),
   .resetn(src_resetn),
   .s_valid(src_fifo_valid),
-  .s_ready(src_fifo_ready),
+  .s_ready(),
+    .s_last(src_fifo_last),
   .s_data(src_fifo_data),
   .m_valid(src_fifo_repacked_valid),
-  .m_ready(src_fifo_repacked_ready),
-  .m_data(src_fifo_repacked_data)
+  .m_ready(1'b1), /* No backpressure */
+  .m_data(src_fifo_repacked_data),
+  .m_last(src_fifo_repacked_last)
 );
-
-assign src_fifo_repacked_last = src_fifo_last;
 
 burst_fifo #(
   .DATA_WIDTH(DMA_DATA_WIDTH),
@@ -761,9 +771,10 @@ burst_fifo #(
   .src_clk(src_clk),
   .src_reset(~src_resetn),
   .src_data_valid(src_fifo_repacked_valid),
-  .src_data_ready(src_fifo_repacked_ready),
   .src_data(src_fifo_repacked_data),
   .src_data_last(src_fifo_repacked_last),
+
+  .src_data_request_id(src_data_request_id),
 
   .dest_clk(dest_clk),
   .dest_reset(~dest_resetn),
@@ -786,36 +797,11 @@ util_axis_resize #(
   .s_valid(dest_fifo_valid),
   .s_ready(dest_fifo_ready),
   .s_data(dest_fifo_data),
+  .s_last(dest_fifo_last),
   .m_valid(dest_fifo_repacked_valid),
   .m_ready(dest_fifo_repacked_ready),
-  .m_data(dest_fifo_repacked_data)
-);
-
-assign dest_fifo_repacked_last = dest_fifo_last;
-
-wire _dest_valid;
-wire _dest_ready;
-wire [DMA_DATA_WIDTH_DEST-1:0] _dest_data;
-wire _dest_last;
-
-axi_register_slice #(
-  .DATA_WIDTH(DMA_DATA_WIDTH_DEST + 1),
-  .FORWARD_REGISTERED(AXI_SLICE_DEST)
-) i_dest_slice2 (
-  .clk(dest_clk),
-  .resetn(dest_resetn),
-  .s_axi_valid(dest_fifo_repacked_valid),
-  .s_axi_ready(dest_fifo_repacked_ready),
-  .s_axi_data({
-    dest_fifo_repacked_last,
-    dest_fifo_repacked_data
-  }),
-  .m_axi_valid(_dest_valid),
-  .m_axi_ready(_dest_ready),
-  .m_axi_data({
-    _dest_last,
-    _dest_data
-  })
+  .m_data(dest_fifo_repacked_data),
+  .m_last(dest_fifo_repacked_last)
 );
 
 axi_register_slice #(
@@ -825,11 +811,11 @@ axi_register_slice #(
 ) i_dest_slice (
   .clk(dest_clk),
   .resetn(dest_resetn),
-  .s_axi_valid(_dest_valid),
-  .s_axi_ready(_dest_ready),
+  .s_axi_valid(dest_fifo_repacked_valid),
+  .s_axi_ready(dest_fifo_repacked_ready),
   .s_axi_data({
-    _dest_last,
-    _dest_data
+    dest_fifo_repacked_last,
+    dest_fifo_repacked_data
   }),
   .m_axi_valid(dest_valid),
   .m_axi_ready(dest_ready),

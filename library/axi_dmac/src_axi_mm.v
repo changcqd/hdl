@@ -68,7 +68,6 @@ module dmac_src_mm_axi #(
   input                           address_eot,
 
   output                          fifo_valid,
-  input                           fifo_ready,
   output [DMA_DATA_WIDTH-1:0]   fifo_data,
   output                          fifo_last,
 
@@ -134,9 +133,11 @@ dmac_address_generator #(
 );
 
 assign fifo_valid = m_axi_rvalid;
-assign m_axi_rready = fifo_ready;
 assign fifo_data = m_axi_rdata;
 assign fifo_last = m_axi_rlast;
+
+ /* We wont be receiveing data before we've requested it */
+assign m_axi_rready = 1'b1;
 
 /*
  * There is a requirement that data_id <= address_id (modulo 2**ID_WIDTH).  We
@@ -147,8 +148,7 @@ assign fifo_last = m_axi_rlast;
 always @(posedge m_axi_aclk) begin
   if (m_axi_aresetn == 1'b0) begin
     id <= 'h00;
-  end else if (m_axi_rvalid == 1'b1 && m_axi_rready == 1'b1 &&
-               m_axi_rlast == 1'b1) begin
+  end else if (m_axi_rvalid == 1'b1 && m_axi_rlast == 1'b1) begin
     id <= inc_id(id);
   end
 end

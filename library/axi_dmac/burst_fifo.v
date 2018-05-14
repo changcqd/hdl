@@ -43,9 +43,10 @@ module burst_fifo #(
   input src_reset,
 
   input src_data_valid,
-  output reg src_data_ready = 1'b0,
   input [DATA_WIDTH-1:0] src_data,
   input src_data_last,
+
+  output [ID_WIDTH-1:0] src_data_request_id,
 
   input dest_clk,
   input dest_reset,
@@ -96,7 +97,7 @@ reg [BURST_LEN_WIDTH-1:0] burst_len_mem[0:2**(ID_WIDTH-1)-1];
 
 assign src_reduced_id = {src_id[ID_WIDTH-1]^src_id[ID_WIDTH-2],src_id[ID_WIDTH-3:0]};
 
-assign src_beat = src_data_valid & src_data_ready;
+assign src_beat = src_data_valid;
 assign src_last_beat = src_beat & src_data_last;
 assign src_waddr = {src_reduced_id,src_beat_counter};
 
@@ -108,12 +109,7 @@ always @(*) begin
   end
 end
 
-always @(posedge src_clk) begin
-  /* Ready if there is room for at least one full burst. */
-  src_data_ready <= (src_id_next[ID_WIDTH-1] == src_dest_id[ID_WIDTH-1] ||
-                src_id_next[ID_WIDTH-2] == src_dest_id[ID_WIDTH-2] ||
-                src_id_next[ID_WIDTH-3:0] != src_dest_id[ID_WIDTH-3:0]);
-end
+assign src_data_request_id = src_dest_id;
 
 always @(posedge src_clk) begin
   if (src_reset == 1'b1) begin

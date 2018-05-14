@@ -36,8 +36,8 @@
 module axi_read_slave #(
   parameter DATA_WIDTH = 32,
   parameter READ_ACCEPTANCE = 4,
-  parameter MIN_LATENCY = 48,
-  parameter MAX_LATENCY = 48
+  parameter MIN_LATENCY = 21,
+  parameter MAX_LATENCY = 21
 ) (
   input clk,
   input reset,
