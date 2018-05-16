@@ -48,7 +48,7 @@ module dmac_response_handler #(
   input [ID_WIDTH-1:0] request_id,
 
   input enable,
-  output reg enabled,
+  output reg enabled = 1'b0,
 
   input eot,
 

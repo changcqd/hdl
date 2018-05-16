@@ -56,7 +56,7 @@ module dmac_dest_fifo_inf #(
   output reg valid,
   output reg underflow,
 
-  output xfer_req,
+  output reg xfer_req = 1'b0,
 
   output fifo_ready,
   input fifo_valid,
@@ -71,8 +71,11 @@ module dmac_dest_fifo_inf #(
 
 `include "inc_id.h"
 
+wire fifo_last_beat;
+
 assign enabled = enable;
 assign fifo_ready = en & (fifo_valid | ~enable);
+assign fifo_last_beat = fifo_ready & fifo_valid & fifo_last;
 
 assign req_ready = 1'b1;
 
@@ -90,9 +93,18 @@ end
 always @(posedge clk) begin
   if (resetn == 1'b0) begin
     data_id <= 'h00;
-  end else if (fifo_ready == 1'b1 && fifo_valid == 1'b1 &&
-               fifo_last == 1'b1) begin
+  end else if (fifo_last_beat == 1'b1) begin
     data_id <= inc_id(data_id);
+  end
+end
+
+always @(posedge clk) begin
+  if (resetn == 1'b0) begin
+    xfer_req <= 1'b0;
+  end else if (fifo_valid == 1'b1) begin
+    xfer_req <= 1'b1;
+  end else if (fifo_last_beat == 1'b1 && data_eot == 1'b1) begin
+    xfer_req <= 1'b0;
   end
 end
 

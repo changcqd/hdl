@@ -46,6 +46,7 @@ module burst_fifo #(
   input [DATA_WIDTH-1:0] src_data,
   input src_data_last,
 
+  output [ID_WIDTH-1:0] src_data_id,
   output [ID_WIDTH-1:0] src_data_request_id,
 
   input dest_clk,
@@ -110,6 +111,7 @@ always @(*) begin
 end
 
 assign src_data_request_id = src_dest_id;
+assign src_data_id = src_id;
 
 always @(posedge src_clk) begin
   if (src_reset == 1'b1) begin

@@ -62,9 +62,8 @@ module dmac_src_mm_axi #(
   input  [ID_WIDTH-1:0]         request_id,
   output [ID_WIDTH-1:0]         response_id,
 
-  output [ID_WIDTH-1:0]         data_id,
+  input  [ID_WIDTH-1:0]         data_id,
   output [ID_WIDTH-1:0]         address_id,
-  input                           data_eot,
   input                           address_eot,
 
   output                          fifo_valid,
@@ -95,8 +94,7 @@ reg [ID_WIDTH-1:0] id = 'h00;
 
 wire address_enabled;
 
-assign data_id = id;
-assign response_id = id;
+assign response_id = data_id;
 
 dmac_address_generator #(
   .ID_WIDTH(ID_WIDTH),
@@ -136,7 +134,7 @@ assign fifo_valid = m_axi_rvalid;
 assign fifo_data = m_axi_rdata;
 assign fifo_last = m_axi_rlast;
 
- /* We wont be receiveing data before we've requested it */
+/* We wont be receiveing data before we've requested it */
 assign m_axi_rready = 1'b1;
 
 /*
@@ -162,7 +160,7 @@ always @(posedge m_axi_aclk) begin
     enabled <= 1'b0;
   end else if (address_enabled == 1'b1) begin
     enabled <= 1'b1;
-  end else if (id == address_id) begin
+  end else if (data_id == address_id) begin
     enabled <= 1'b0;
   end
 end

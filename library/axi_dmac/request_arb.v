@@ -250,6 +250,7 @@ wire [1:0] src_response_resp;
 */
 
 reg [ID_WIDTH-1:0] src_request_id;
+wire [ID_WIDTH-1:0] src_data_id;
 wire [ID_WIDTH-1:0] src_data_request_id;
 wire [ID_WIDTH-1:0] src_response_id;
 
@@ -418,7 +419,6 @@ dmac_dest_axi_stream #(
   .response_resp(dest_response_resp),
   .response_resp_eot(dest_response_resp_eot),
 
-  .request_id(dest_request_id),
   .response_id(dest_response_id),
   .data_id(data_id),
   .xfer_req(m_axis_xfer_req),
@@ -512,10 +512,8 @@ generate if (DMA_TYPE_SRC == DMA_TYPE_MM_AXI) begin
 assign src_clk = m_src_axi_aclk;
 assign src_ext_resetn = m_src_axi_aresetn;
 
-wire [ID_WIDTH-1:0] src_data_id;
 wire [ID_WIDTH-1:0] src_address_id;
 wire src_address_eot = eot_mem[src_address_id];
-wire src_data_eot = eot_mem[src_data_id];
 
 assign dbg_src_address_id = src_address_id;
 assign dbg_src_data_id = src_data_id;
@@ -551,7 +549,6 @@ dmac_src_mm_axi #(
   .data_id(src_data_id),
 
   .address_eot(src_address_eot),
-  .data_eot(src_data_eot),
 
   .fifo_valid(src_valid),
   .fifo_data(src_data),
@@ -774,6 +771,7 @@ burst_fifo #(
   .src_data(src_fifo_repacked_data),
   .src_data_last(src_fifo_repacked_last),
 
+  .src_data_id(src_data_id),
   .src_data_request_id(src_data_request_id),
 
   .dest_clk(dest_clk),

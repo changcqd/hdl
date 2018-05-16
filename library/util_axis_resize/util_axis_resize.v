@@ -45,10 +45,12 @@ module util_axis_resize # (
   input                       s_valid,
   output                      s_ready,
   input [SLAVE_DATA_WIDTH-1:0]  s_data,
+  input                       s_last,
 
   output                      m_valid,
   input                       m_ready,
-  output [MASTER_DATA_WIDTH-1:0] m_data
+  output [MASTER_DATA_WIDTH-1:0] m_data,
+  output                      m_last
 );
 
 localparam RATIO = (SLAVE_DATA_WIDTH < MASTER_DATA_WIDTH) ?
@@ -69,12 +71,14 @@ generate if (SLAVE_DATA_WIDTH == MASTER_DATA_WIDTH) begin
 assign m_valid = s_valid;
 assign s_ready = m_ready;
 assign m_data = s_data;
+assign m_last = s_last;
 
 end else if (SLAVE_DATA_WIDTH < MASTER_DATA_WIDTH) begin
 
 reg [MASTER_DATA_WIDTH-1:0] data;
 reg [clog2(RATIO)-1:0] count;
 reg valid;
+reg last;
 
 always @(posedge clk)
 begin
@@ -104,17 +108,20 @@ begin
     end else begin
       data <= {s_data, data[MASTER_DATA_WIDTH-1:SLAVE_DATA_WIDTH]};
     end
+    last <= s_last;
 end
 
 assign s_ready = ~valid || m_ready;
 assign m_valid = valid;
 assign m_data = data;
+assign m_last = last;
 
 end else begin
 
 reg [SLAVE_DATA_WIDTH-1:0] data;
 reg [clog2(RATIO)-1:0] count;
 reg valid;
+reg last;
 
 always @(posedge clk)
 begin
@@ -140,6 +147,7 @@ always @(posedge clk)
 begin
   if (s_ready == 1'b1 && s_valid == 1'b1) begin
     data <= s_data;
+    last <= s_last;
   end else if (m_ready == 1'b1 && m_valid == 1'b1) begin
     if (BIG_ENDIAN == 1) begin
       data[SLAVE_DATA_WIDTH-1:MASTER_DATA_WIDTH] <= data[SLAVE_DATA_WIDTH-MASTER_DATA_WIDTH-1:0];
@@ -154,6 +162,7 @@ assign m_valid = valid;
 assign m_data = BIG_ENDIAN == 1 ?
   data[SLAVE_DATA_WIDTH-1:SLAVE_DATA_WIDTH-MASTER_DATA_WIDTH] :
   data[MASTER_DATA_WIDTH-1:0];
+assign m_last = last && count == 'h0;
 
 end
 endgenerate
